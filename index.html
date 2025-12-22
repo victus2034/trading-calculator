@@ -4,56 +4,56 @@
  <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0066ff">
 <link rel="apple-touch-icon" href="icon.png">
- 
+
 <title>Intraday Trading Calculator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f2f4f7;
-      padding: 15px;
-    }
-    h2 { text-align:center; margin-bottom:15px; }
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f2f4f7;
+  padding: 15px;
+}
+h2 { text-align:center; margin-bottom:15px; }
 
-    .card {
-      background:#fff;
-      padding:16px;
-      border-radius:12px;
-      margin-bottom:15px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.05);
-      max-width:520px;
-      margin-left:auto;
-      margin-right:auto;
-    }
+.card {
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:15px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+  max-width:520px;
+  margin-left:auto;
+  margin-right:auto;
+}
 
-    label { font-size:13px; font-weight:600; color:#555; }
-    input, select {
-      width:100%;
-      padding:10px;
-      margin-top:4px;
-      margin-bottom:12px;
-      border-radius:8px;
-      border:1px solid #ccc;
-      font-size:15px;
-    }
+label { font-size:13px; font-weight:600; color:#555; }
+input, select {
+  width:100%;
+  padding:10px;
+  margin-top:4px;
+  margin-bottom:12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:15px;
+}
 
-    button {
-      width:100%;
-      padding:12px;
-      border-radius:10px;
-      border:none;
-      background:#0066ff;
-      color:white;
-      font-size:16px;
-      font-weight:600;
-    }
+button {
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  background:#0066ff;
+  color:white;
+  font-size:16px;
+  font-weight:600;
+}
 
-    .divider { height:1px; background:#eee; margin:12px 0; }
-    .big-green { color:#0a8f3c; font-size:22px; font-weight:700; }
-    .big-red { color:#d93025; font-size:20px; font-weight:700; }
-    .muted { color:#666; font-size:14px; }
-  </style>
+.divider { height:1px; background:#eee; margin:12px 0; }
+.big-green { color:#0a8f3c; font-size:22px; font-weight:700; }
+.big-red { color:#d93025; font-size:20px; font-weight:700; }
+.muted { color:#666; font-size:14px; }
+</style>
 </head>
 
 <body>
@@ -61,6 +61,13 @@
 <h2>Intraday Trading Calculator</h2>
 
 <div class="card">
+
+  <label>Market Type</label>
+  <select id="marketType">
+    <option value="indian">Indian Market</option>
+    <option value="crypto">Crypto (Delta – Limit Order)</option>
+  </select>
+
   <label>Capital Used (₹)</label>
   <input id="capital" type="number">
 
@@ -72,15 +79,6 @@
     <option value="BUY">BUY (Long)</option>
     <option value="SELL">SELL (Short)</option>
   </select>
-
-  <label>Risk Type</label>
-  <select id="riskType">
-    <option value="FIXED" selected>Risk ₹</option>
-    <option value="PERCENT">Risk %</option>
-  </select>
-
-  <label>Risk Value</label>
-  <input id="riskValue" type="number">
 </div>
 
 <div class="card">
@@ -113,12 +111,10 @@
 <script>
 function calculate() {
 
+  var marketType = document.getElementById("marketType").value;
   var capital = Number(document.getElementById("capital").value);
   var leverage = Number(document.getElementById("leverage").value);
   var tradeType = document.getElementById("tradeType").value;
-
-  var riskType = document.getElementById("riskType").value;
-  var riskValue = Number(document.getElementById("riskValue").value);
 
   var entry = Number(document.getElementById("entry").value);
   var slType = document.getElementById("slType").value;
@@ -127,16 +123,15 @@ function calculate() {
   var exitType = document.getElementById("exitType").value;
   var exitValue = Number(document.getElementById("exitValue").value);
 
-  if (!capital || !leverage || !riskValue || !entry || !slValue || !exitValue) {
+  if (!capital || !leverage || !entry || !slValue || !exitValue) {
     alert("Please fill all fields");
     return;
   }
 
   var effectiveCapital = capital * leverage;
 
-  var riskAmount = (riskType === "PERCENT")
-    ? effectiveCapital * (riskValue / 100)
-    : riskValue;
+  var qty = Math.floor(effectiveCapital / entry);
+  if (qty <= 0) { alert("Capital too low"); return; }
 
   var slPrice = (slType === "PERCENT")
     ? (tradeType === "BUY"
@@ -144,21 +139,13 @@ function calculate() {
         : entry * (1 + slValue/100))
     : slValue;
 
-  var perShareRisk = Math.abs(entry - slPrice);
-  if (perShareRisk <= 0) { alert("Invalid SL"); return; }
-
-  var qty = Math.min(
-    Math.floor(riskAmount / perShareRisk),
-    Math.floor(effectiveCapital / entry)
-  );
-
   var tpPrice = (exitType === "PERCENT")
     ? (tradeType === "BUY"
         ? entry * (1 + exitValue/100)
         : entry * (1 - exitValue/100))
     : exitValue;
 
-  function charges(buy, sell) {
+  function indianCharges(buy, sell) {
     var t = buy + sell;
     var broker = Math.min(buy*0.0003,20) + Math.min(sell*0.0003,20);
     var stt = sell*0.00025;
@@ -169,10 +156,21 @@ function calculate() {
     return broker + stt + exchange + sebi + stamp + gst;
   }
 
-  var chargesTP = charges(entry*qty, tpPrice*qty);
+  function cryptoCharges(entryVal, exitVal) {
+    var fee = 0.02 / 100;
+    return (entryVal + exitVal) * fee;
+  }
+
+  var chargesTP = (marketType === "crypto")
+    ? cryptoCharges(entry*qty, tpPrice*qty)
+    : indianCharges(entry*qty, tpPrice*qty);
+
   var profit = ((tradeType==="BUY"?tpPrice-entry:entry-tpPrice)*qty) - chargesTP;
 
-  var chargesSL = charges(entry*qty, slPrice*qty);
+  var chargesSL = (marketType === "crypto")
+    ? cryptoCharges(entry*qty, slPrice*qty)
+    : indianCharges(entry*qty, slPrice*qty);
+
   var loss = Math.abs(entry-slPrice)*qty + chargesSL;
 
   document.getElementById("result").style.display="block";
@@ -182,12 +180,12 @@ function calculate() {
 
     <div class="divider"></div>
 
-    <div class="muted">Place SL Order</div>
+    <div class="muted">Stop Loss Price</div>
     <div class="big-red">₹ ${slPrice.toFixed(2)}</div>
 
     <div class="divider"></div>
 
-    <div class="muted">Place TP Order</div>
+    <div class="muted">Target Price</div>
     <div class="big-green">₹ ${tpPrice.toFixed(2)}</div>
 
     <div class="divider"></div>
@@ -202,6 +200,7 @@ function calculate() {
   `;
 }
 </script>
+
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
