@@ -1,59 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
- <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0066ff">
-<link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0066ff">
+  <link rel="apple-touch-icon" href="icon.png">
 
-<title>Intraday Trading Calculator</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intraday Trading Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f2f4f7;
-  padding: 15px;
-}
-h2 { text-align:center; margin-bottom:15px; }
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f2f4f7;
+      padding: 15px;
+    }
+    h2 { text-align:center; margin-bottom:15px; }
 
-.card {
-  background:#fff;
-  padding:16px;
-  border-radius:12px;
-  margin-bottom:15px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.05);
-  max-width:520px;
-  margin-left:auto;
-  margin-right:auto;
-}
+    .card {
+      background:#fff;
+      padding:16px;
+      border-radius:12px;
+      margin-bottom:15px;
+      box-shadow:0 2px 8px rgba(0,0,0,0.05);
+      max-width:520px;
+      margin-left:auto;
+      margin-right:auto;
+    }
 
-label { font-size:13px; font-weight:600; color:#555; }
-input, select {
-  width:100%;
-  padding:10px;
-  margin-top:4px;
-  margin-bottom:12px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  font-size:15px;
-}
+    label { font-size:13px; font-weight:600; color:#555; }
+    input, select {
+      width:100%;
+      padding:10px;
+      margin-top:4px;
+      margin-bottom:12px;
+      border-radius:8px;
+      border:1px solid #ccc;
+      font-size:15px;
+    }
 
-button {
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  background:#0066ff;
-  color:white;
-  font-size:16px;
-  font-weight:600;
-}
+    button {
+      width:100%;
+      padding:14px;
+      border-radius:12px;
+      border:none;
+      background:#0066ff;
+      color:white;
+      font-size:17px;
+      font-weight:600;
+    }
 
-.divider { height:1px; background:#eee; margin:12px 0; }
-.big-green { color:#0a8f3c; font-size:22px; font-weight:700; }
-.big-red { color:#d93025; font-size:20px; font-weight:700; }
-.muted { color:#666; font-size:14px; }
-</style>
+    .divider { height:1px; background:#eee; margin:12px 0; }
+    .big-green { color:#0a8f3c; font-size:22px; font-weight:700; }
+    .big-red { color:#d93025; font-size:20px; font-weight:700; }
+    .muted { color:#666; font-size:14px; }
+
+    /* 🌙 Dark mode */
+    body.dark {
+      background:#0f172a;
+      color:#e5e7eb;
+    }
+    body.dark .card {
+      background:#111827;
+    }
+    body.dark input,
+    body.dark select {
+      background:#020617;
+      color:white;
+      border:1px solid #334155;
+    }
+  </style>
 </head>
 
 <body>
@@ -61,12 +76,23 @@ button {
 <h2>Intraday Trading Calculator</h2>
 
 <div class="card">
+  <div class="muted" style="margin-bottom:8px;">Trade Setup</div>
+
+  <label>Theme</label>
+  <select id="themeToggle">
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+  </select>
 
   <label>Market Type</label>
   <select id="marketType">
     <option value="indian">Indian Market</option>
-    <option value="crypto">Crypto (Delta – Limit Order)</option>
+    <option value="crypto">Crypto</option>
   </select>
+
+  <div id="cryptoHint" class="muted" style="display:none; margin-top:-6px; margin-bottom:10px;">
+    Maker fee (0.02%) applied on entry & exit
+  </div>
 
   <label>Capital Used (₹)</label>
   <input id="capital" type="number">
@@ -82,6 +108,8 @@ button {
 </div>
 
 <div class="card">
+  <div class="muted" style="margin-bottom:8px;">Price Levels</div>
+
   <label>Entry Price</label>
   <input id="entry" type="number">
 
@@ -104,11 +132,23 @@ button {
   <input id="exitValue" type="number">
 
   <button onclick="calculate()">Calculate</button>
+  <div style="height:6px;"></div>
 </div>
 
 <div id="result" class="card" style="display:none;"></div>
 
 <script>
+/* Theme toggle */
+document.getElementById("themeToggle").addEventListener("change", function () {
+  document.body.classList.toggle("dark", this.value === "dark");
+});
+
+/* Crypto hint */
+document.getElementById("marketType").addEventListener("change", function () {
+  document.getElementById("cryptoHint").style.display =
+    this.value === "crypto" ? "block" : "none";
+});
+
 function calculate() {
 
   var marketType = document.getElementById("marketType").value;
@@ -129,7 +169,6 @@ function calculate() {
   }
 
   var effectiveCapital = capital * leverage;
-
   var qty = Math.floor(effectiveCapital / entry);
   if (qty <= 0) { alert("Capital too low"); return; }
 
@@ -176,7 +215,7 @@ function calculate() {
   document.getElementById("result").style.display="block";
   document.getElementById("result").innerHTML = `
     <div class="muted">Final Quantity</div>
-    <div class="big-green">${qty}</div>
+    <div class="big-green" style="font-size:26px;">${qty}</div>
 
     <div class="divider"></div>
 
@@ -198,6 +237,8 @@ function calculate() {
     <div class="muted">Loss If SL Hits</div>
     <div class="big-red">₹ ${loss.toFixed(2)}</div>
   `;
+
+  document.getElementById("result").scrollIntoView({ behavior: "smooth" });
 }
 </script>
 
