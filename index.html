@@ -240,6 +240,22 @@
       line-height: 1.45;
     }
 
+    .fee-panel {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+
+    .fee-panel-title {
+      margin: 0 0 13px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .fee-panel .grid { gap: 12px; }
+
     .calculate-button {
       width: 100%;
       margin-top: 22px;
@@ -458,6 +474,45 @@
                 <span class="suffix">x</span>
               </div>
             </div>
+
+            <div class="field full fee-panel" id="cryptoFeeFields" hidden>
+              <p class="fee-panel-title">CoinSwitch futures charges</p>
+              <div class="grid">
+                <div class="field full">
+                  <label for="feePreset">Fee profile</label>
+                  <select id="feePreset">
+                    <option value="baba">BABA history - 0.05363%</option>
+                    <option value="meta">META history - 0.04540%</option>
+                    <option value="custom">Custom rates</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="entryFeeRate">Entry fee rate</label>
+                  <div class="control-wrap">
+                    <input class="has-suffix" id="entryFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.05363">
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="exitFeeRate">Exit fee rate</label>
+                  <div class="control-wrap">
+                    <input class="has-suffix" id="exitFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.05363">
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="feeGstRate">GST on fees</label>
+                  <div class="control-wrap">
+                    <input class="has-suffix" id="feeGstRate" type="number" inputmode="decimal" min="0" step="any" value="18">
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+              </div>
+              <p class="hint">Rates are derived from your CoinSwitch history. Charges apply to full position value on both entry and exit; funding is separate.</p>
+            </div>
           </div>
         </section>
 
@@ -578,7 +633,10 @@
       }
 
       function cryptoCharges(entryValue, exitValue) {
-        return (entryValue + exitValue) * 0.0002;
+        var entryRate = numberValue("entryFeeRate") / 100;
+        var exitRate = numberValue("exitFeeRate") / 100;
+        var gstMultiplier = 1 + numberValue("feeGstRate") / 100;
+        return (entryValue * entryRate + exitValue * exitRate) * gstMultiplier;
       }
 
       function chargesFor(entry, exit, qty, direction) {
@@ -660,9 +718,24 @@
 
       function syncMarket() {
         var symbol = marketType.value === "indian" ? "\u20b9" : "$";
+        document.getElementById("cryptoFeeFields").hidden = marketType.value !== "crypto";
         document.querySelectorAll(".currency-prefix").forEach(function (node) {
           node.textContent = symbol;
         });
+      }
+
+      function applyFeePreset() {
+        var preset = document.getElementById("feePreset").value;
+        var entryFeeInput = document.getElementById("entryFeeRate");
+        var exitFeeInput = document.getElementById("exitFeeRate");
+
+        if (preset === "baba") {
+          entryFeeInput.value = "0.05363";
+          exitFeeInput.value = "0.05363";
+        } else if (preset === "meta") {
+          entryFeeInput.value = "0.04540";
+          exitFeeInput.value = "0.04540";
+        }
       }
 
       function syncInputType(selectId, suffixId) {
@@ -698,6 +771,9 @@
         var exitType = document.getElementById("exitType").value;
         var hasEntry = entry > 0;
         var hasTradeLimit = tradeLimit > 0;
+        var entryFeeRate = numberValue("entryFeeRate");
+        var exitFeeRate = numberValue("exitFeeRate");
+        var feeGstRate = numberValue("feeGstRate");
 
         if (!(slValue > 0) || !(targetValue > 0)) {
           showError("Enter positive values for stop-loss and target.");
@@ -706,6 +782,11 @@
 
         if (mode === "risk" && !(riskCap > 0)) {
           showError("Enter a maximum loss greater than zero.");
+          return;
+        }
+
+        if (marketType.value === "crypto" && (entryFeeRate < 0 || exitFeeRate < 0 || feeGstRate < 0)) {
+          showError("Crypto fee and GST rates cannot be negative.");
           return;
         }
 
@@ -788,6 +869,9 @@
         var resultNote = hasEntry
           ? "Estimated charges are included in both outcomes. Actual broker and exchange charges may vary slightly."
           : "Entry price is not needed for this capital amount. Add it later if you want exact quantity and TP/SL prices.";
+        if (marketType.value === "crypto") {
+          resultNote = "Charges include entry fee, exit fee, and " + feeGstRate.toFixed(2) + "% GST. Funding is not included. " + resultNote;
+        }
         if (limitApplied) {
           resultNote = "Maximum trade amount limited this position to " + money(positionValue) + ". " + resultNote;
         }
@@ -808,7 +892,7 @@
             '<div class="metric"><div class="metric-label">Loss at stop</div><div class="metric-value negative">' + money(netLoss) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Profit at target</div><div class="metric-value positive">' + money(netProfit) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Risk / reward</div><div class="metric-value">1 : ' + rewardRisk.toFixed(2) + '</div></div>' +
-            '<div class="metric"><div class="metric-label">Target charges</div><div class="metric-value">' + money(targetCharges) + '</div></div>' +
+            '<div class="metric"><div class="metric-label">' + (marketType.value === "crypto" ? "Target charges + GST" : "Target charges") + '</div><div class="metric-value">' + money(targetCharges) + '</div></div>' +
           '</div>' +
           '<p class="risk-note">' + resultNote + '</p>';
 
@@ -829,6 +913,14 @@
         syncMarket();
         syncInputType("slType", "slSuffix");
         syncInputType("exitType", "exitSuffix");
+      });
+
+      document.getElementById("feePreset").addEventListener("change", applyFeePreset);
+
+      ["entryFeeRate", "exitFeeRate"].forEach(function (id) {
+        document.getElementById(id).addEventListener("input", function () {
+          document.getElementById("feePreset").value = "custom";
+        });
       });
 
       document.getElementById("slType").addEventListener("change", function () {
