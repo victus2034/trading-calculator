@@ -456,11 +456,12 @@
           <h2 class="section-title">Price levels</h2>
           <div class="grid">
             <div class="field">
-              <label for="entry">Entry price</label>
+              <label for="entry" id="entryLabel">Entry price (optional)</label>
               <div class="control-wrap">
                 <span class="prefix currency-prefix">&#8377;</span>
-                <input class="has-prefix" id="entry" type="number" inputmode="decimal" min="0" step="any" placeholder="1000" required>
+                <input class="has-prefix" id="entry" type="number" inputmode="decimal" min="0" step="any" placeholder="Optional" autocomplete="off">
               </div>
+              <p class="hint" id="entryHint">Leave blank to calculate the capital amount. Add a price only for exact quantity and price levels.</p>
             </div>
 
             <div class="field">
@@ -607,6 +608,34 @@
         return floorQuantity(low);
       }
 
+      function maxPositionValueForRisk(riskCap, stopRatio, direction) {
+        var lossPerCurrencyUnit = Math.abs(1 - stopRatio);
+        var upper = riskCap / lossPerCurrencyUnit;
+        var low = 0;
+        var high = upper;
+
+        for (var i = 0; i < 70; i += 1) {
+          var mid = (low + high) / 2;
+          var totalLoss = lossPerCurrencyUnit * mid + chargesFor(1, stopRatio, mid, direction);
+          if (totalLoss <= riskCap) low = mid;
+          else high = mid;
+        }
+
+        return Math.floor(low * 100) / 100;
+      }
+
+      function syncEntryRequirement() {
+        var entryInput = document.getElementById("entry");
+        var percentOnly = document.getElementById("slType").value === "PERCENT"
+          && document.getElementById("exitType").value === "PERCENT";
+        var optional = selectedMode() === "risk" && percentOnly;
+
+        entryInput.required = !optional;
+        entryInput.placeholder = optional ? "Optional" : "1000";
+        document.getElementById("entryLabel").textContent = optional ? "Entry price (optional)" : "Entry price";
+        document.getElementById("entryHint").hidden = !optional;
+      }
+
       function syncMode() {
         var riskBased = selectedMode() === "risk";
         document.getElementById("riskField").hidden = !riskBased;
@@ -616,6 +645,7 @@
         document.getElementById("capital").required = !riskBased;
         document.getElementById("leverage").required = !riskBased;
         resultMode.textContent = riskBased ? "Risk-based position size" : "Capital and leverage position size";
+        syncEntryRequirement();
       }
 
       function syncMarket() {
@@ -653,9 +683,12 @@
         var riskCap = numberValue("maxRisk");
         var capital = numberValue("capital");
         var leverage = numberValue("leverage");
+        var slType = document.getElementById("slType").value;
+        var exitType = document.getElementById("exitType").value;
+        var hasEntry = entry > 0;
 
-        if (!(entry > 0) || !(slValue > 0) || !(targetValue > 0)) {
-          showError("Enter positive values for entry, stop-loss, and target.");
+        if (!(slValue > 0) || !(targetValue > 0)) {
+          showError("Enter positive values for stop-loss and target.");
           return;
         }
 
@@ -664,22 +697,28 @@
           return;
         }
 
-        if (mode === "capital" && (!(capital > 0) || !(leverage > 0))) {
-          showError("Enter positive values for capital and leverage.");
+        if (mode === "capital" && (!(capital > 0) || !(leverage > 0) || !hasEntry)) {
+          showError("Enter positive values for capital, leverage, and entry price.");
           return;
         }
 
-        var stop = document.getElementById("slType").value === "PERCENT"
-          ? entry * (direction === "BUY" ? 1 - slValue / 100 : 1 + slValue / 100)
+        if (!hasEntry && (slType !== "PERCENT" || exitType !== "PERCENT")) {
+          showError("Entry price is required when stop-loss or target uses a price value.");
+          return;
+        }
+
+        var calculationEntry = hasEntry ? entry : 1;
+        var stop = slType === "PERCENT"
+          ? calculationEntry * (direction === "BUY" ? 1 - slValue / 100 : 1 + slValue / 100)
           : slValue;
 
-        var target = document.getElementById("exitType").value === "PERCENT"
-          ? entry * (direction === "BUY" ? 1 + targetValue / 100 : 1 - targetValue / 100)
+        var target = exitType === "PERCENT"
+          ? calculationEntry * (direction === "BUY" ? 1 + targetValue / 100 : 1 - targetValue / 100)
           : targetValue;
 
         var invalidDirection = direction === "BUY"
-          ? stop >= entry || target <= entry
-          : stop <= entry || target >= entry;
+          ? stop >= calculationEntry || target <= calculationEntry
+          : stop <= calculationEntry || target >= calculationEntry;
 
         if (stop <= 0 || target <= 0 || invalidDirection) {
           showError(direction === "BUY"
@@ -688,39 +727,61 @@
           return;
         }
 
-        var qty = mode === "risk"
-          ? maxQuantityForRisk(riskCap, entry, stop, direction)
-          : floorQuantity((capital * leverage) / entry);
+        var qty = null;
+        var positionValue = 0;
 
-        if (!(qty > 0)) {
+        if (mode === "risk" && hasEntry) {
+          qty = maxQuantityForRisk(riskCap, entry, stop, direction);
+          positionValue = entry * qty;
+        } else if (mode === "risk") {
+          positionValue = maxPositionValueForRisk(riskCap, stop, direction);
+        } else {
+          qty = floorQuantity((capital * leverage) / entry);
+          positionValue = entry * qty;
+        }
+
+        if (!(positionValue > 0) || (hasEntry && !(qty > 0))) {
           showError("The available risk or capital is too low for this trade.");
           return;
         }
 
-        var positionValue = entry * qty;
-        var targetCharges = chargesFor(entry, target, qty, direction);
-        var stopCharges = chargesFor(entry, stop, qty, direction);
-        var grossProfit = Math.abs(target - entry) * qty;
-        var grossLoss = Math.abs(entry - stop) * qty;
+        var calculationQty = hasEntry ? qty : positionValue;
+        var targetCharges = chargesFor(calculationEntry, target, calculationQty, direction);
+        var stopCharges = chargesFor(calculationEntry, stop, calculationQty, direction);
+        var grossProfit = Math.abs(target - calculationEntry) * calculationQty;
+        var grossLoss = Math.abs(calculationEntry - stop) * calculationQty;
         var netProfit = grossProfit - targetCharges;
         var netLoss = grossLoss + stopCharges;
         var rewardRisk = netLoss > 0 ? netProfit / netLoss : 0;
+        var stopSide = direction === "BUY" ? "below entry" : "above entry";
+        var targetSide = direction === "BUY" ? "above entry" : "below entry";
+        var stopDisplay = hasEntry ? money(stop) : slValue.toFixed(2) + "% " + stopSide;
+        var targetDisplay = hasEntry ? money(target) : targetValue.toFixed(2) + "% " + targetSide;
+        var heroLabel = hasEntry ? "Position value" : "Capital to use";
+        var heroSub = hasEntry ? "Quantity: " + quantity(qty) : "Add entry price to see exact quantity";
+        var resultNote = hasEntry
+          ? "Estimated charges are included in both outcomes. Actual broker and exchange charges may vary slightly."
+          : "Entry price is not needed for this capital amount. Add it later if you want exact quantity and TP/SL prices.";
+
+        resultMode.textContent = mode === "risk"
+          ? (hasEntry ? "Risk-based position size" : "Risk-based capital amount")
+          : "Capital and leverage position size";
 
         resultBody.innerHTML =
           '<div class="hero-result">' +
-            '<div class="metric-label">Position value</div>' +
+            '<div class="metric-label">' + heroLabel + '</div>' +
             '<div class="hero-value">' + money(positionValue) + '</div>' +
-            '<div class="hero-sub">Quantity: ' + quantity(qty) + '</div>' +
+            '<div class="hero-sub">' + heroSub + '</div>' +
           '</div>' +
           '<div class="metrics">' +
-            '<div class="metric"><div class="metric-label">Stop-loss price</div><div class="metric-value negative">' + money(stop) + '</div></div>' +
-            '<div class="metric"><div class="metric-label">Target price</div><div class="metric-value positive">' + money(target) + '</div></div>' +
+            '<div class="metric"><div class="metric-label">' + (hasEntry ? "Stop-loss price" : "Stop-loss") + '</div><div class="metric-value negative">' + stopDisplay + '</div></div>' +
+            '<div class="metric"><div class="metric-label">' + (hasEntry ? "Target price" : "Target") + '</div><div class="metric-value positive">' + targetDisplay + '</div></div>' +
             '<div class="metric"><div class="metric-label">Loss at stop</div><div class="metric-value negative">' + money(netLoss) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Profit at target</div><div class="metric-value positive">' + money(netProfit) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Risk / reward</div><div class="metric-value">1 : ' + rewardRisk.toFixed(2) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Target charges</div><div class="metric-value">' + money(targetCharges) + '</div></div>' +
           '</div>' +
-          '<p class="risk-note">Estimated charges are included in both outcomes. Actual broker and exchange charges may vary slightly.</p>';
+          '<p class="risk-note">' + resultNote + '</p>';
 
         emptyState.hidden = true;
         resultBody.hidden = false;
@@ -743,10 +804,12 @@
 
       document.getElementById("slType").addEventListener("change", function () {
         syncInputType("slType", "slSuffix");
+        syncEntryRequirement();
       });
 
       document.getElementById("exitType").addEventListener("change", function () {
         syncInputType("exitType", "exitSuffix");
+        syncEntryRequirement();
       });
 
       themeButton.addEventListener("click", function () {

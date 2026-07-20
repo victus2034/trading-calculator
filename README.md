@@ -4,7 +4,8 @@ A responsive position-sizing calculator for Indian intraday trades and crypto.
 
 ## Features
 
-- Risk-based sizing from a maximum loss amount
+- Risk-based capital sizing from a maximum loss amount, without requiring entry price
+- Optional entry price for exact share or coin quantity and TP/SL prices
 - Capital and leverage sizing
 - Long and short trades
 - Stop-loss and target by percentage or price

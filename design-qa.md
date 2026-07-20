@@ -1,18 +1,18 @@
 # Design QA
 
 - Source visual truth: `C:\Users\shiva\Downloads\Oversized Pages copy.pdf`
-- Rendered implementation: `tmp/desktop-result-final.png`
+- Rendered implementation: `tmp/no-entry-result.png`
 - Combined comparison: `tmp/design-comparison.png`
-- Viewport: 1365 x 900 desktop; 390 x 844 mobile
-- State: Crypto, Buy / Long, USD 250 maximum loss, 1000 entry, 0.5% stop-loss, 1% target
+- Viewport: 853px browser content width for the no-entry result; previously verified at 1365 x 900 desktop and 390 x 844 mobile
+- State: Crypto, Buy / Long, USD 250 maximum loss, blank entry price, 0.5% stop-loss, 1% target
 
 ## Full-view comparison evidence
 
-The PDF is a functional sketch rather than a visual UI specification. The combined comparison confirms that every requested concept is visible in one workflow: percentage-based stop-loss, a USD 250 maximum-loss cap, calculated position value, target price, stop-loss price, and both target and stop outcomes. The implementation intentionally retains the repository's calculator product structure instead of reproducing the handwritten visual style.
+The PDF is a functional sketch rather than a visual UI specification. Browser evidence confirms that every requested concept is visible without requiring entry price: percentage-based stop-loss, a USD 250 maximum-loss cap, calculated capital to use, percentage target/stop levels, and both target and stop outcomes. The implementation intentionally retains the repository's calculator product structure instead of reproducing the handwritten visual style.
 
 ## Focused-region comparison evidence
 
-A separate crop was not required because the source handwriting and the implementation's input/result fields are readable at original resolution in `tmp/design-comparison.png`. The critical values were also verified from the browser-rendered DOM: USD 46,304.87 position value, USD 995.00 stop, USD 1,010.00 target, USD 250.00 estimated loss, and USD 444.43 estimated profit after charges.
+A separate crop was not required because the source handwriting and the implementation's input/result fields are readable at original resolution. The no-entry browser state verified these DOM values: USD 46,304.87 capital to use, 0.50% stop, 1.00% target, USD 250.00 estimated loss, and USD 444.43 estimated profit after charges. Entering USD 1,000 afterward also restored exact quantity and USD 995/USD 1,010 price levels.
 
 ## Required fidelity surfaces
 
@@ -35,6 +35,8 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 ## Browser verification
 
 - Risk-based mode: passed with charges included inside the USD 250 cap.
+- Blank-entry risk mode: passed and returns capital to use without requesting trade price.
+- Optional-entry enhancement: passed and returns exact quantity plus TP/SL prices when a price is supplied.
 - Capital and leverage mode: passed with INR 10,000 capital, 5x leverage, and INR 1,000 entry.
 - Theme switching: passed.
 - Responsive desktop and mobile layouts: passed with no horizontal overflow.
@@ -44,6 +46,8 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 ## Implementation checklist
 
 - [x] Maximum-loss risk sizing
+- [x] Capital-to-use result without entry price
+- [x] Optional entry price for exact quantity and price levels
 - [x] Position value and quantity
 - [x] Stop-loss and target prices
 - [x] Profit, loss, charges, and risk/reward
