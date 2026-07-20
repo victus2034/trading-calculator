@@ -434,6 +434,15 @@
               <p class="hint">Charges are included so the estimated loss stays within this cap.</p>
             </div>
 
+            <div class="field" id="tradeLimitField">
+              <label for="tradeLimit">Maximum trade amount (optional)</label>
+              <div class="control-wrap">
+                <span class="prefix currency-prefix">&#8377;</span>
+                <input class="has-prefix" id="tradeLimit" type="number" inputmode="decimal" min="0" step="any" placeholder="250" autocomplete="off">
+              </div>
+              <p class="hint">Caps the capital used even when risk sizing allows a larger position.</p>
+            </div>
+
             <div class="field" id="capitalField" hidden>
               <label for="capital">Capital available</label>
               <div class="control-wrap">
@@ -639,6 +648,7 @@
       function syncMode() {
         var riskBased = selectedMode() === "risk";
         document.getElementById("riskField").hidden = !riskBased;
+        document.getElementById("tradeLimitField").hidden = !riskBased;
         document.getElementById("capitalField").hidden = riskBased;
         document.getElementById("leverageField").hidden = riskBased;
         document.getElementById("maxRisk").required = riskBased;
@@ -681,11 +691,13 @@
         var slValue = numberValue("slValue");
         var targetValue = numberValue("exitValue");
         var riskCap = numberValue("maxRisk");
+        var tradeLimit = numberValue("tradeLimit");
         var capital = numberValue("capital");
         var leverage = numberValue("leverage");
         var slType = document.getElementById("slType").value;
         var exitType = document.getElementById("exitType").value;
         var hasEntry = entry > 0;
+        var hasTradeLimit = tradeLimit > 0;
 
         if (!(slValue > 0) || !(targetValue > 0)) {
           showError("Enter positive values for stop-loss and target.");
@@ -729,6 +741,7 @@
 
         var qty = null;
         var positionValue = 0;
+        var limitApplied = false;
 
         if (mode === "risk" && hasEntry) {
           qty = maxQuantityForRisk(riskCap, entry, stop, direction);
@@ -740,8 +753,20 @@
           positionValue = entry * qty;
         }
 
+        if (mode === "risk" && hasTradeLimit && positionValue > tradeLimit) {
+          limitApplied = true;
+          if (hasEntry) {
+            qty = floorQuantity(tradeLimit / entry);
+            positionValue = entry * qty;
+          } else {
+            positionValue = Math.floor(tradeLimit * 100) / 100;
+          }
+        }
+
         if (!(positionValue > 0) || (hasEntry && !(qty > 0))) {
-          showError("The available risk or capital is too low for this trade.");
+          showError(limitApplied
+            ? "The trade limit is lower than the value of one tradable unit at this entry price."
+            : "The available risk or capital is too low for this trade.");
           return;
         }
 
@@ -759,9 +784,13 @@
         var targetDisplay = hasEntry ? money(target) : targetValue.toFixed(2) + "% " + targetSide;
         var heroLabel = hasEntry ? "Position value" : "Capital to use";
         var heroSub = hasEntry ? "Quantity: " + quantity(qty) : "Add entry price to see exact quantity";
+        if (limitApplied) heroSub += " - trade limit applied";
         var resultNote = hasEntry
           ? "Estimated charges are included in both outcomes. Actual broker and exchange charges may vary slightly."
           : "Entry price is not needed for this capital amount. Add it later if you want exact quantity and TP/SL prices.";
+        if (limitApplied) {
+          resultNote = "Maximum trade amount limited this position to " + money(positionValue) + ". " + resultNote;
+        }
 
         resultMode.textContent = mode === "risk"
           ? (hasEntry ? "Risk-based position size" : "Risk-based capital amount")

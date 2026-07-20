@@ -1,10 +1,10 @@
 # Design QA
 
 - Source visual truth: `C:\Users\shiva\Downloads\Oversized Pages copy.pdf`
-- Rendered implementation: `tmp/no-entry-result.png`
+- Rendered implementation: `tmp/trade-limit-result.png`
 - Combined comparison: `tmp/design-comparison.png`
 - Viewport: 853px browser content width for the no-entry result; previously verified at 1365 x 900 desktop and 390 x 844 mobile
-- State: Crypto, Buy / Long, USD 250 maximum loss, blank entry price, 0.5% stop-loss, 1% target
+- State: Crypto, Buy / Long, USD 250 maximum loss, USD 250 maximum trade amount, blank entry price, 0.5% stop-loss, 1% target
 
 ## Full-view comparison evidence
 
@@ -37,6 +37,7 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 - Risk-based mode: passed with charges included inside the USD 250 cap.
 - Blank-entry risk mode: passed and returns capital to use without requesting trade price.
 - Optional-entry enhancement: passed and returns exact quantity plus TP/SL prices when a price is supplied.
+- Maximum trade amount: passed with USD 250 cap; the result used USD 250 capital, showed USD 1.35 estimated stop loss, and returned quantity 10 when USD 25 entry was supplied.
 - Capital and leverage mode: passed with INR 10,000 capital, 5x leverage, and INR 1,000 entry.
 - Theme switching: passed.
 - Responsive desktop and mobile layouts: passed with no horizontal overflow.
@@ -48,6 +49,7 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 - [x] Maximum-loss risk sizing
 - [x] Capital-to-use result without entry price
 - [x] Optional entry price for exact quantity and price levels
+- [x] Optional maximum trade amount cap
 - [x] Position value and quantity
 - [x] Stop-loss and target prices
 - [x] Profit, loss, charges, and risk/reward
