@@ -1,15 +1,9 @@
 {
-  "name": "Intraday Trading Calculator",
-  "short_name": "Trading Calc",
-  "start_url": "index.html",
+  "name": "Trading Risk Calculator",
+  "short_name": "Risk Calc",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0066ff",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220"
 }
