@@ -481,8 +481,7 @@
                 <div class="field full">
                   <label for="feePreset">Fee profile</label>
                   <select id="feePreset">
-                    <option value="baba">BABA history - 0.05363%</option>
-                    <option value="meta">META history - 0.04540%</option>
+                    <option value="maximum">Maximum observed - 0.30% per order</option>
                     <option value="custom">Custom rates</option>
                   </select>
                 </div>
@@ -490,7 +489,7 @@
                 <div class="field">
                   <label for="entryFeeRate">Entry fee rate</label>
                   <div class="control-wrap">
-                    <input class="has-suffix" id="entryFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.05363">
+                    <input class="has-suffix" id="entryFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.30">
                     <span class="suffix">%</span>
                   </div>
                 </div>
@@ -498,20 +497,12 @@
                 <div class="field">
                   <label for="exitFeeRate">Exit fee rate</label>
                   <div class="control-wrap">
-                    <input class="has-suffix" id="exitFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.05363">
-                    <span class="suffix">%</span>
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label for="feeGstRate">GST on fees</label>
-                  <div class="control-wrap">
-                    <input class="has-suffix" id="feeGstRate" type="number" inputmode="decimal" min="0" step="any" value="18">
+                    <input class="has-suffix" id="exitFeeRate" type="number" inputmode="decimal" min="0" step="0.00001" value="0.30">
                     <span class="suffix">%</span>
                   </div>
                 </div>
               </div>
-              <p class="hint">Rates are derived from your CoinSwitch history. Charges apply to full position value on both entry and exit; funding is separate.</p>
+              <p class="hint">Highest all-in commission observed in your full history. Approximate round-trip maximum: $0.60 per $100, $1.20 per $200, and $6.00 per $1,000. Funding is separate.</p>
             </div>
           </div>
         </section>
@@ -635,8 +626,7 @@
       function cryptoCharges(entryValue, exitValue) {
         var entryRate = numberValue("entryFeeRate") / 100;
         var exitRate = numberValue("exitFeeRate") / 100;
-        var gstMultiplier = 1 + numberValue("feeGstRate") / 100;
-        return (entryValue * entryRate + exitValue * exitRate) * gstMultiplier;
+        return entryValue * entryRate + exitValue * exitRate;
       }
 
       function chargesFor(entry, exit, qty, direction) {
@@ -729,12 +719,9 @@
         var entryFeeInput = document.getElementById("entryFeeRate");
         var exitFeeInput = document.getElementById("exitFeeRate");
 
-        if (preset === "baba") {
-          entryFeeInput.value = "0.05363";
-          exitFeeInput.value = "0.05363";
-        } else if (preset === "meta") {
-          entryFeeInput.value = "0.04540";
-          exitFeeInput.value = "0.04540";
+        if (preset === "maximum") {
+          entryFeeInput.value = "0.30";
+          exitFeeInput.value = "0.30";
         }
       }
 
@@ -773,7 +760,6 @@
         var hasTradeLimit = tradeLimit > 0;
         var entryFeeRate = numberValue("entryFeeRate");
         var exitFeeRate = numberValue("exitFeeRate");
-        var feeGstRate = numberValue("feeGstRate");
 
         if (!(slValue > 0) || !(targetValue > 0)) {
           showError("Enter positive values for stop-loss and target.");
@@ -785,8 +771,8 @@
           return;
         }
 
-        if (marketType.value === "crypto" && (entryFeeRate < 0 || exitFeeRate < 0 || feeGstRate < 0)) {
-          showError("Crypto fee and GST rates cannot be negative.");
+        if (marketType.value === "crypto" && (entryFeeRate < 0 || exitFeeRate < 0)) {
+          showError("Crypto fee rates cannot be negative.");
           return;
         }
 
@@ -870,7 +856,10 @@
           ? "Estimated charges are included in both outcomes. Actual broker and exchange charges may vary slightly."
           : "Entry price is not needed for this capital amount. Add it later if you want exact quantity and TP/SL prices.";
         if (marketType.value === "crypto") {
-          resultNote = "Charges include entry fee, exit fee, and " + feeGstRate.toFixed(2) + "% GST. Funding is not included. " + resultNote;
+          var feeProfileText = document.getElementById("feePreset").value === "maximum"
+            ? "the maximum 0.30% all-in rate observed in your history on both entry and exit"
+            : "custom all-in rates of " + entryFeeRate.toFixed(5) + "% on entry and " + exitFeeRate.toFixed(5) + "% on exit";
+          resultNote = "Charges use " + feeProfileText + ". No extra GST is added; funding is not included. " + resultNote;
         }
         if (limitApplied) {
           resultNote = "Maximum trade amount limited this position to " + money(positionValue) + ". " + resultNote;
@@ -892,7 +881,7 @@
             '<div class="metric"><div class="metric-label">Loss at stop</div><div class="metric-value negative">' + money(netLoss) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Profit at target</div><div class="metric-value positive">' + money(netProfit) + '</div></div>' +
             '<div class="metric"><div class="metric-label">Risk / reward</div><div class="metric-value">1 : ' + rewardRisk.toFixed(2) + '</div></div>' +
-            '<div class="metric"><div class="metric-label">' + (marketType.value === "crypto" ? "Target charges + GST" : "Target charges") + '</div><div class="metric-value">' + money(targetCharges) + '</div></div>' +
+            '<div class="metric"><div class="metric-label">' + (marketType.value === "crypto" ? "Crypto target charges" : "Target charges") + '</div><div class="metric-value">' + money(targetCharges) + '</div></div>' +
           '</div>' +
           '<p class="risk-note">' + resultNote + '</p>';
 

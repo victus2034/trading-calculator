@@ -1,10 +1,11 @@
 # Design QA
 
 - Source visual truth: `C:\Users\shiva\Downloads\Oversized Pages copy.pdf`
-- Rendered implementation: `tmp/corrected-fees-result.png`
+- Charge source data: `C:\Users\shiva\Downloads\FuturesHistory_2039396576_2026-07-01_2026-07-16.xlsx`, `Trades!A1:K17`
+- Rendered implementation: `tmp/maximum-charge-result.png`
 - Combined comparison: `tmp/design-comparison.png`
-- Viewport: 853px browser content width for the no-entry result; previously verified at 1365 x 900 desktop and 390 x 844 mobile
-- State: Crypto, BABA fee profile, Buy / Long, USD 250 maximum loss, USD 250 maximum trade amount, blank entry price, 0.5% stop-loss, 1% target
+- Viewport: 403px browser content width for the maximum-charge result; previously verified at 1365 x 900 desktop and 390 x 844 mobile
+- State: Crypto, maximum observed 0.30% all-in fee profile, Buy / Long, USD 250 maximum loss, USD 1,000 maximum trade amount, blank entry price, 0.5% stop-loss, 1% target
 
 ## Full-view comparison evidence
 
@@ -12,7 +13,7 @@ The PDF is a functional sketch rather than a visual UI specification. Browser ev
 
 ## Focused-region comparison evidence
 
-A separate crop was not required because the source handwriting and the implementation's input/result fields are readable at original resolution. The no-entry browser state verified these DOM values: USD 46,304.87 capital to use, 0.50% stop, 1.00% target, USD 250.00 estimated loss, and USD 444.43 estimated profit after charges. Entering USD 1,000 afterward also restored exact quantity and USD 995/USD 1,010 price levels.
+A separate crop was not required because the source handwriting and implementation fields are readable at original resolution. Workbook analysis found a highest positive commission rate of 0.299993%, rounded conservatively to 0.30% per order. Browser states verified target-path charges of USD 0.60, USD 1.21, and USD 6.03 for USD 100, USD 200, and USD 1,000 trades respectively; the small difference from a flat round trip reflects the 1% higher target exit value.
 
 ## Required fidelity surfaces
 
@@ -37,8 +38,8 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 - Risk-based mode: passed with charges included inside the USD 250 cap.
 - Blank-entry risk mode: passed and returns capital to use without requesting trade price.
 - Optional-entry enhancement: passed and returns exact quantity plus TP/SL prices when a price is supplied.
-- Maximum trade amount: passed with USD 250 cap; the corrected BABA fee profile shows USD 1.57 estimated stop loss. A USD 25 entry returns quantity 10.
-- Corrected CoinSwitch charges: passed with BABA 0.05363% entry/exit rates plus 18% GST. A USD 250 capped trade produced USD 0.32 target-path charges, USD 1.57 stop outcome, and USD 2.18 target outcome. META 0.04540% profile also changed the result correctly. Funding is explicitly excluded.
+- Maximum trade amount: passed at USD 100, USD 200, and USD 1,000 with blank entry price.
+- Conservative CoinSwitch charges: passed with the workbook-derived 0.30% all-in maximum on both entry and exit. No additional GST is added, preventing double counting of exported Commission; funding is explicitly excluded.
 - Capital and leverage mode: passed with INR 10,000 capital, 5x leverage, and INR 1,000 entry.
 - Theme switching: passed.
 - Responsive desktop and mobile layouts: passed with no horizontal overflow.
@@ -51,7 +52,7 @@ No actionable P0, P1, or P2 differences remain. The source does not define a pro
 - [x] Capital-to-use result without entry price
 - [x] Optional entry price for exact quantity and price levels
 - [x] Optional maximum trade amount cap
-- [x] Pair-specific CoinSwitch fee profiles with GST
+- [x] Conservative maximum CoinSwitch charge derived from full trade history
 - [x] Position value and quantity
 - [x] Stop-loss and target prices
 - [x] Profit, loss, charges, and risk/reward
